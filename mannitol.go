@@ -24,7 +24,7 @@ var (
 func init() {
 	flag.StringVar(&upstream, "up", "8.8.8.8:53,8.8.4.4:53", "upstream server")
 	flag.StringVar(&myip, "myip", "", "my ip address")
-	flag.StringVar(&listenaddr, "listen", "0.0.0.0:53", "listen address")
+	flag.StringVar(&listenaddr, "listen", "127.0.0.1:5553", "listen address")
 }
 
 func getMyIp() (ip string, err error) {
