@@ -10,10 +10,10 @@ import (
 	"github.com/miekg/dns"
 )
 
-func appendEdns0Subnet(m *dns.Msg, addr net.IP) {
+func appendEdns0Subnet(msg *dns.Msg, addr net.IP) {
 	newOpt := true
 	var o *dns.OPT
-	for _, v := range m.Extra {
+	for _, v := range msg.Extra {
 		if v.Header().Rrtype == dns.TypeOPT {
 			o = v.(*dns.OPT)
 			newOpt = false
@@ -25,11 +25,12 @@ func appendEdns0Subnet(m *dns.Msg, addr net.IP) {
 		o.Hdr.Name = "."
 		o.Hdr.Rrtype = dns.TypeOPT
 	}
-	e := new(dns.EDNS0_SUBNET)
-	e.Code = dns.EDNS0SUBNET
-	e.SourceScope = 0
-	e.Address = addr
-	if e.Address.To4() == nil {
+	e := &dns.EDNS0_SUBNET{
+		Code:        dns.EDNS0SUBNET,
+		SourceScope: 0,
+		Address:     addr,
+	}
+	if addr.To4() == nil {
 		e.Family = 2 // IP6
 		e.SourceNetmask = net.IPv6len * 8
 	} else {
@@ -38,7 +39,7 @@ func appendEdns0Subnet(m *dns.Msg, addr net.IP) {
 	}
 	o.Option = append(o.Option, e)
 	if newOpt {
-		m.Extra = append(m.Extra, o)
+		msg.Extra = append(msg.Extra, o)
 	}
 }
 
@@ -64,22 +65,22 @@ func NewForwarder(myip string, upstream string) (handler *Forwarder, err error) 
 	return
 }
 
-func (handler *Forwarder) ServeDNS(w dns.ResponseWriter, q *dns.Msg) {
-	var r *dns.Msg
+func (handler *Forwarder) ServeDNS(w dns.ResponseWriter, quiz *dns.Msg) {
+	var resp *dns.Msg
 	var err error
 	var dbglog bytes.Buffer
 
 	if Debug {
-		fmt.Fprintf(&dbglog, "query: %s ", q.Question[0].Name)
+		fmt.Fprintf(&dbglog, "query: %s ", quiz.Question[0].Name)
 	}
 
-	appendEdns0Subnet(q, handler.subnet)
+	appendEdns0Subnet(quiz, handler.subnet)
 
 	for _, srv := range handler.servers {
 		if Debug {
 			fmt.Fprintf(&dbglog, "srv: %s ", srv)
 		}
-		r, _, err = handler.client.Exchange(q, srv)
+		resp, _, err = handler.client.Exchange(quiz, srv)
 		if err == nil {
 			break
 		}
@@ -91,7 +92,7 @@ func (handler *Forwarder) ServeDNS(w dns.ResponseWriter, q *dns.Msg) {
 
 	if Debug {
 		fmt.Fprintf(&dbglog, "result: ")
-		for _, ans := range r.Answer {
+		for _, ans := range resp.Answer {
 			if a, ok := ans.(*dns.A); ok {
 				fmt.Fprintf(&dbglog, "%s ", a.A.String())
 			}
@@ -99,7 +100,7 @@ func (handler *Forwarder) ServeDNS(w dns.ResponseWriter, q *dns.Msg) {
 		log.Print(dbglog.String())
 	}
 
-	err = w.WriteMsg(r)
+	err = w.WriteMsg(resp)
 	if err != nil {
 		log.Printf("write failed: %s.", err.Error())
 		return
