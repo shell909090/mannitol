@@ -46,7 +46,6 @@ type Forwarder struct {
 	client  *dns.Client
 	servers []string
 	subnet  net.IP
-	debug   bool
 }
 
 func NewForwarder(myip string, upstream string) (handler *Forwarder, err error) {
@@ -61,7 +60,6 @@ func NewForwarder(myip string, upstream string) (handler *Forwarder, err error) 
 		client:  &dns.Client{},
 		servers: strings.Split(upstream, ","),
 		subnet:  mynet,
-		debug:   true,
 	}
 	return
 }
@@ -71,14 +69,14 @@ func (handler *Forwarder) ServeDNS(w dns.ResponseWriter, q *dns.Msg) {
 	var err error
 	var dbglog bytes.Buffer
 
-	if handler.debug {
+	if Debug {
 		fmt.Fprintf(&dbglog, "query: %s ", q.Question[0].Name)
 	}
 
 	appendEdns0Subnet(q, handler.subnet)
 
 	for _, srv := range handler.servers {
-		if handler.debug {
+		if Debug {
 			fmt.Fprintf(&dbglog, "srv: %s ", srv)
 		}
 		r, _, err = handler.client.Exchange(q, srv)
@@ -91,7 +89,7 @@ func (handler *Forwarder) ServeDNS(w dns.ResponseWriter, q *dns.Msg) {
 		return
 	}
 
-	if handler.debug {
+	if Debug {
 		fmt.Fprintf(&dbglog, "result: ")
 		for _, ans := range r.Answer {
 			if a, ok := ans.(*dns.A); ok {

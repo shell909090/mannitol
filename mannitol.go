@@ -18,11 +18,12 @@ var (
 	Upstream   string
 	MyIP       string
 	ListenAddr string
+	Debug      = true
 )
 
 func init() {
-	flag.StringVar(&RunMode, "mode", "dns",
-		"dns for forwarder, http for google https dns")
+	flag.StringVar(&RunMode, "mode", "https",
+		"dns for forwarder, https for google https dns")
 	flag.StringVar(&Upstream, "up", "8.8.8.8:53,8.8.4.4:53", "upstream server")
 	flag.StringVar(&MyIP, "myip", "", "my ip address")
 	flag.StringVar(&ListenAddr, "listen", "127.0.0.1:5553", "listen address")
@@ -65,12 +66,18 @@ func main() {
 		log.Printf("auto get myip: %s.", MyIP)
 	}
 
-	if RunMode == "dns" {
+	switch RunMode {
+	case "dns":
 		handler, err = NewForwarder(MyIP, Upstream)
-		if err != nil {
-			log.Fatalf(err.Error())
-			return
-		}
+	case "https":
+		handler, err = NewGoogleHttpsDns(MyIP)
+	default:
+		log.Fatalf("unknown mode: %s.", RunMode)
+		return
+	}
+	if err != nil {
+		log.Fatalf(err.Error())
+		return
 	}
 
 	server := &dns.Server{

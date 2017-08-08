@@ -6,4 +6,5 @@
 
 # 鸣谢
 
-ayanamist的[gdns-go](https://github.com/ayanamist/gdns-go)
+* ayanamist的[gdns-go](https://github.com/ayanamist/gdns-go)
+* [dns-over-https-proxy](https://github.com/wrouesnel/dns-over-https-proxy)
