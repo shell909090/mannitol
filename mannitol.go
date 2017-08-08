@@ -18,7 +18,7 @@ var (
 	Upstream   string
 	MyIP       string
 	ListenAddr string
-	Debug      = true
+	Debug      = false
 )
 
 func init() {

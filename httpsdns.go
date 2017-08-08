@@ -35,7 +35,16 @@ func NewGoogleHttpsDns(myip string) (handler *GoogleHttpsDns, err error) {
 		transport: &http2.Transport{},
 		subnet:    myip,
 	}
-	// TODO: warm up
+
+	jsonresp, err := handler.QueryHttpsDNS("1", "www.google.com")
+	if err != nil {
+		log.Fatalf("warmup err: %s.", err.Error())
+		return
+	}
+
+	for _, a := range jsonresp.Answer {
+		log.Printf("google result: %s.", a.Data)
+	}
 	return
 }
 
@@ -313,39 +322,30 @@ func (jr *DNSRR) Translate() (rr dns.RR) {
 		}
 		rr = nsec
 	case dns.TypeDNSKEY:
-		dnskey := &dns.DNSKEY{}
 		parts := strings.Split(jr.Data, " ")
 		if len(parts) < 4 {
 			return
 		}
-		var n uint64
-		n, _ = strconv.ParseUint(parts[0], 10, 16)
-		dnskey.Flags = uint16(n)
-		n, _ = strconv.ParseUint(parts[1], 10, 8)
-		dnskey.Protocol = uint8(n)
-		n, _ = strconv.ParseUint(parts[2], 10, 8)
-		dnskey.Algorithm = uint8(n)
-		dnskey.PublicKey = parts[3]
-		rr = dnskey
+		rr = &dns.DNSKEY{
+			Flags:     uint16(ParseUint(parts[0])),
+			Protocol:  uint8(ParseUint(parts[1])),
+			Algorithm: uint8(ParseUint(parts[2])),
+			PublicKey: parts[3],
+		}
 	case dns.TypeNSEC3:
-		nsec3 := &dns.NSEC3{}
 		parts := strings.Split(jr.Data, " ")
 		if len(parts) < 7 {
 			return
 		}
-		var n uint64
-		n, _ = strconv.ParseUint(parts[0], 10, 8)
-		nsec3.Hash = uint8(n)
-		n, _ = strconv.ParseUint(parts[1], 10, 8)
-		nsec3.Flags = uint8(n)
-		n, _ = strconv.ParseUint(parts[2], 10, 16)
-		nsec3.Iterations = uint16(n)
-		n, _ = strconv.ParseUint(parts[3], 10, 8)
-		nsec3.SaltLength = uint8(n)
-		nsec3.Salt = parts[4]
-		n, _ = strconv.ParseUint(parts[5], 10, 8)
-		nsec3.HashLength = uint8(n)
-		nsec3.NextDomain = parts[6]
+		nsec3 := &dns.NSEC3{
+			Hash:       uint8(ParseUint(parts[0])),
+			Flags:      uint8(ParseUint(parts[1])),
+			Iterations: uint16(ParseUint(parts[2])),
+			SaltLength: uint8(ParseUint(parts[3])),
+			Salt:       parts[4],
+			HashLength: uint8(ParseUint(parts[5])),
+			NextDomain: parts[6],
+		}
 		for _, d := range parts[7:] {
 			if t, ok := dns.StringToType[strings.ToUpper(d)]; ok {
 				nsec3.TypeBitMap = append(nsec3.TypeBitMap, t)
@@ -353,22 +353,17 @@ func (jr *DNSRR) Translate() (rr dns.RR) {
 		}
 		rr = nsec3
 	case dns.TypeNSEC3PARAM:
-		nsec3param := &dns.NSEC3PARAM{}
 		parts := strings.Split(jr.Data, " ")
 		if len(parts) < 5 {
 			return
 		}
-		var n uint64
-		n, _ = strconv.ParseUint(parts[0], 10, 8)
-		nsec3param.Hash = uint8(n)
-		n, _ = strconv.ParseUint(parts[1], 10, 8)
-		nsec3param.Flags = uint8(n)
-		n, _ = strconv.ParseUint(parts[2], 10, 16)
-		nsec3param.Iterations = uint16(n)
-		n, _ = strconv.ParseUint(parts[3], 10, 8)
-		nsec3param.SaltLength = uint8(n)
-		nsec3param.Salt = parts[4]
-		rr = nsec3param
+		rr = &dns.NSEC3PARAM{
+			Hash:       uint8(ParseUint(parts[0])),
+			Flags:      uint8(ParseUint(parts[1])),
+			Iterations: uint16(ParseUint(parts[2])),
+			SaltLength: uint8(ParseUint(parts[3])),
+			Salt:       parts[4],
+		}
 	}
 	hdr := &dns.RR_Header{
 		Name:     jr.Name,
