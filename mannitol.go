@@ -35,6 +35,7 @@ func getMyIP() (ip string, err error) {
 		log.Fatalf("get myip err: %s.", err.Error())
 		return
 	}
+	defer resp.Body.Close()
 
 	p, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
